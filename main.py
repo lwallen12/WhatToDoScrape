@@ -1,30 +1,53 @@
+import pymysql
 import requests
 import time
+from datetime import datetime
 from bs4 import BeautifulSoup
 
 #  'Aransas+Pass',  'Sabine+Lake', not for every year
 
 # and then apparently does not work for 2020?... or atleast bolivar
-locationsList = [
-    'East+Matagorda+Bay',
-    'Baffin+Bay',
-    'Bolivar',
-    'Corpus+Christi',
-    'East+Galveston+Bay',
-    'Freeport',
-    'North+Sabine',
-    'Port+Aransas',
-    'Port+Isabel',
-    'Port+Mansfield',
-    'Port+O%27Connor',
-    'Rockport',
-    'South+Padre',
-    'South+Sabine',
-    'Texas+City',
-    'Trinity+Bay',
-    'West+Galveston+Bay',
-    'West+Matagorda+Bay'
-]
+# locationsList = [
+#     'East+Matagorda+Bay',
+#     'Baffin+Bay',
+#     'Bolivar',
+#     'Corpus+Christi',
+#     'East+Galveston+Bay',
+#     'Freeport',
+#     'North+Sabine',
+#     'Port+Aransas',
+#     'Port+Isabel',
+#     'Port+Mansfield',
+#     'Port+O%27Connor',
+#     'Rockport',
+#     'South+Padre',
+#     'South+Sabine',
+#     'Texas+City',
+#     'Trinity+Bay',
+#     'West+Galveston+Bay',
+#     'West+Matagorda+Bay'
+# ]
+
+locationsDict = {
+'East Matagora Bay':'East+Matagorda+Bay',
+'Baffin Bay':'Baffin+Bay',
+'Bolivar': 'Bolivar',
+'Corpus Christi':'Corpus+Christi',
+'East Galveston Bay':'East+Galveston+Bay',
+'Freeport':'Freeport',
+'North Sabine':'North+Sabine',
+'Port Aransas':'Port+Aransas',
+'Port Isabel':'Port+Isabel',
+'Port Mansfield':'Port+Mansfield',
+'Port O\'Conner':'Port+O%27Connor',
+'Rockport':'Rockport',
+'South Padre':'South+Padre',
+'South Sabine':'South+Sabine',
+'Texas City':'Texas+City',
+'Trinity Bay':'Trinity+Bay',
+'West Galveston Bay':'West+Galveston+Bay',
+'West Matagorda Bay':'West+Matagorda+Bay'
+}
 
 Years = ['2010',
 '2011',
@@ -39,27 +62,46 @@ Years = ['2010',
 '2020']
 
 class Report:
+
+
     def __init__(self, date, location, highlights):
         self._date = date
         self._location = location
         self._highlights = highlights
+        self._redfish = ''
+        self._trout = ''
+        self._flounder = ''
 
     def printTable(self):
         for h in self._highlights:
-            print(self._date + '--' + self._location + '--' + h)
+            if ('reds' in h or 'redfish' in h or 'Redfish' in h):
+                print("h has reds: " + h)
+            print(str(self._date) + '--' + self._location + '--' + h)
+
+    def insertTable(self):
+        conn = pymysql.connect(host='test1.ce8cn9mhhgds.us-east-1.rds.amazonaws.com', user='Wallen', passwd='MyRDSdb1',
+                                db='whattodo')
+        cursor = conn.cursor()
+        for h in self._highlights:
+            insertStatement = 'INSERT INTO TPWLFishingReport (ReportDate, Area, Sentence) VALUES (%s, %s, %s)'
+            cursor.execute(insertStatement, (self._date, self._location, h))
+
+        conn.commit()
+        conn.close()
+
 
 fakeYears = ['2020']
 
 for y in fakeYears:
-    for locz in locationsList:
+    for key, value in locationsDict.items():
         #https://tpwd.texas.gov/fishboat/fish/action/reptform2.php?lake=Bolivar&archive=wholeyear&yearcat=2020&Submit=View+Report
-        URL = 'https://tpwd.texas.gov/fishboat/fish/action/reptform2.php?lake='+locz+'&archive=wholeyear&yearcat='+y+'&Submit=View+Report'
+        URL = 'https://tpwd.texas.gov/fishboat/fish/action/reptform2.php?lake='+value+'&archive=wholeyear&yearcat='+y+'&Submit=View+Report'
 
-        if ((locz == 'Bolivar' and y == '2020') or (locz == 'North+Sabine' and y == '2020') or (locz == 'South+Sabine' and y == '2020')):
+        if ((value == 'Bolivar' and y == '2020') or (value == 'North+Sabine' and y == '2020') or (value == 'South+Sabine' and y == '2020')):
             continue
 
-        print(y)
-        print(locz)
+        #print(y)
+        #print(value)
         page = requests.get(URL)
 
         soup = BeautifulSoup(page.content, 'html.parser')
@@ -77,11 +119,6 @@ for y in fakeYears:
         # print('------')
         # print(titleText)
 
-        print('------')
-        print('------')
-        print('------')
-        print('------')
-
         allDates = interest.find_all('dt')
         allDescriptions = interest.find_all('dd')
 
@@ -90,22 +127,31 @@ for y in fakeYears:
         for dt in allDates:
             #gets the date value
             myDate = dt.find('span', {'class': 'title'}).get_text()
+            myDate = myDate.replace(",","")
+            #print(myDate)
+            reportDate = datetime.strptime(myDate, '%b %d %Y')
+            #print(reportDate)
 
             #creates and cleans the list of descriptions on what is effective
             desc = dt.findNext('dd').get_text()
             descList = desc.split('.')
             descList = [h.strip(' ') for h in descList]
 
-            prettyLoc = locz.replace('+', ' ')
-            prettyLoc = locz.replace('%27', '\'')
+            # prettyLoc = value.replace('+', ' ')
+            # prettyLoc = value.replace('%27', '\'')
 
             #creates the report object, and appends it to the list that will be appended to the report list
-            report = Report(myDate, prettyLoc, descList)
+            report = Report(reportDate, key, descList)
             reportList.append((report))
 
         #Just for proof that we can create a row the way we need
         firstRep = reportList[0]
         firstRep.printTable()
+        #firstRep.insertTable()
+        print('------')
+        print('------')
+        print('------')
+        print('------')
         time.sleep(2)
 
 
@@ -137,6 +183,9 @@ for y in fakeYears:
 
 #Seems like fair, fair to good, good, very good, excellent.... picked up?
 
+
+#for key, value in locationsDict.items():
+ #   print(key, value)
 
 
 
