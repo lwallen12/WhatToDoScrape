@@ -63,28 +63,74 @@ Years = ['2010',
 
 class Report:
 
-
-    def __init__(self, date, location, highlights):
+    def __init__(self, date, location, sentences, paragraph):
         self._date = date
         self._location = location
-        self._highlights = highlights
+        self._sentences = sentences
+        self._paragraph = paragraph
         self._redfish = ''
         self._trout = ''
         self._flounder = ''
 
     def printTable(self):
-        for h in self._highlights:
-            if ('reds' in h or 'redfish' in h or 'Redfish' in h):
-                print("h has reds: " + h)
-            print(str(self._date) + '--' + self._location + '--' + h)
+        for h in self._sentences:
+            if ('reds' in h
+                    or 'redfish' in h
+                    or 'Redfish' in h
+                    or 'red drum' in h
+                    or 'Reds' in h
+                    or 'Red drum' in h):
+                self._redfish = self._redfish + ':' + h
+                #print("h has reds: " + h)
+            if ('trout' in h
+                    or 'Trout' in h
+                    or 'Speckled' in h
+                    or 'Specs' in h):
+                self._trout = self._trout + ':' + h
+                #print("h has specs: " + h)
+            if ('Flounder' in h or 'flounder' in h):
+                self._flounder = self._flounder + ':' + h
+                #print("h has flounder: " + h)
+        print(str(self._date) + '--' + self._location + '--R' + self._redfish + '--T' + self._trout + '--F' +
+              self._flounder + '--' + self._paragraph)
 
     def insertTable(self):
         conn = pymysql.connect(host='test1.ce8cn9mhhgds.us-east-1.rds.amazonaws.com', user='Wallen', passwd='MyRDSdb1',
                                 db='whattodo')
         cursor = conn.cursor()
-        for h in self._highlights:
-            insertStatement = 'INSERT INTO TPWLFishingReport (ReportDate, Area, Sentence) VALUES (%s, %s, %s)'
-            cursor.execute(insertStatement, (self._date, self._location, h))
+
+        for h in self._sentences:
+            # insertStatement = 'INSERT INTO TPWLFishingReport (ReportDate, Area, Sentence) VALUES (%s, %s, %s)'
+            # cursor.execute(insertStatement, (self._date, self._location, h))
+
+            if ('reds' in h
+                    or 'redfish' in h
+                    or 'Redfish' in h
+                    or 'red drum' in h
+                    or 'Reds' in h
+                    or 'Red drum' in h):
+                #self._redfish = self._redfish + ':' + h
+                self._redfish.join([self._redfish, h])
+                # print("h has reds: " + h)
+            if ('trout' in h
+                    or 'Trout' in h
+                    or 'Speckled' in h
+                    or 'Specs' in h):
+                #self._trout = self._trout + ':' + h
+                self._trout.join(([self._trout, h]))
+                # print("h has specs: " + h)
+            if ('Flounder' in h or 'flounder' in h):
+                self._flounder.join([self._flounder, h])
+                #self._flounder = self._flounder + ':' + h
+                # print("h has flounder: " + h)
+        #print(str(self._date) + '--' + self._location + '--R' + self._redfish + '--T' + self._trout + '--F' +
+         #     self._flounder + '--' + self._paragraph)
+
+        now = datetime.now()
+
+        insertStatement = 'INSERT INTO TPWLFishingReport (CreationDatetime, ReportDate, Area, Redfish, Trout, Flounder, Paragraph) ' \
+                          'VALUES (%s, %s, %s, %s, %s, %s, %s)'
+        cursor.execute(insertStatement, (now, self._date, self._location, self._redfish, self._trout, self._flounder, self._paragraph))
 
         conn.commit()
         conn.close()
@@ -92,7 +138,7 @@ class Report:
 
 fakeYears = ['2020']
 
-for y in fakeYears:
+for y in Years:
     for key, value in locationsDict.items():
         #https://tpwd.texas.gov/fishboat/fish/action/reptform2.php?lake=Bolivar&archive=wholeyear&yearcat=2020&Submit=View+Report
         URL = 'https://tpwd.texas.gov/fishboat/fish/action/reptform2.php?lake='+value+'&archive=wholeyear&yearcat='+y+'&Submit=View+Report'
@@ -141,13 +187,13 @@ for y in fakeYears:
             # prettyLoc = value.replace('%27', '\'')
 
             #creates the report object, and appends it to the list that will be appended to the report list
-            report = Report(reportDate, key, descList)
+            report = Report(reportDate, key, descList, desc)
             reportList.append((report))
 
         #Just for proof that we can create a row the way we need
         firstRep = reportList[0]
         firstRep.printTable()
-        #firstRep.insertTable()
+        firstRep.insertTable()
         print('------')
         print('------')
         print('------')
