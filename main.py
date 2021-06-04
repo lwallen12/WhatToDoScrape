@@ -95,8 +95,8 @@ class Report:
               self._flounder + '--' + self._paragraph)
 
     def insertTable(self):
-        conn = pymysql.connect(host='test1.ce8cn9mhhgds.us-east-1.rds.amazonaws.com', user='Wallen', passwd='MyRDSdb1',
-                                db='whattodo')
+        conn = pymysql.connect(host='hiding for security', user='hidden', passwd='hidden',
+                                db='hidden')
         cursor = conn.cursor()
 
         for h in self._sentences:
